@@ -1,0 +1,63 @@
+name: Build Memos Fork
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Set up pnpm
+        run: npm install -g pnpm
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+          check-latest: true
+
+      - name: Build
+        id: build
+        run: |
+            git clone https://github.com/quanru/memos.git
+            git checkout ${{ github.ref }}
+            cd ./memos/web
+            pnpm i && pnpm type-gen && pnpm build
+            cd ..
+            rm -rf ./server/dist && cp -r web/dist ./server/
+            go build -o memos ./main.go
+            ls
+            echo "::set-output name=tag_name::$(git tag --sort version:refname | tail -n 1)"
+
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            VERSION: ${{ github.ref }}-fork
+        with:
+            tag_name: ${{ github.ref }}-fork
+            release_name: ${{ github.ref }}-fork
+            draft: false
+            prerelease: false
+
+      - name: Upload file
+        id: upload
+        uses: actions/upload-release-asset@v1
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+            upload_url: ${{ steps.create_release.outputs.upload_url }}
+            asset_path: ./memos/memos
+            asset_name: memos
+            asset_content_type: application/zip
