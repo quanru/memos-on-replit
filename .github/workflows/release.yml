@@ -30,12 +30,12 @@ jobs:
         id: build
         run: |
             git clone https://github.com/usememos/memos.git
-            git checkout ${{ github.ref }}
-            cd ./memos/web
+            cd memos && git checkout ${{ github.ref }}
+            cd ./web
             pnpm i && pnpm type-gen && pnpm build
             cd ..
-            rm -rf ./server/dist && cp -r web/dist ./server/
-            go build -o memos ./main.go
+            rm -rf ./server/frontend/dist && cp -r web/dist ./server/frontend
+            go build -o memos ./bin/memos/main.go
             ls
             echo "::set-output name=tag_name::$(git tag --sort version:refname | tail -n 1)"
 
